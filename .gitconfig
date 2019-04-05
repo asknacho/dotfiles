@@ -1,10 +1,12 @@
 [alias]
 
 	# View abbreviated SHA, description, and history graph of the latest 20 commits
-	l = log --pretty=oneline -n 20 --graph --abbrev-commit
+	l = log -10 --pretty=format:'%C(yellow)%ci%Creset %C(red)%h%Creset %Cgreen%an %Creset %s'
+	# l = log --pretty=oneline -n 20 --graph --abbrev-commit
 
 	# View the current working tree status using the short format
 	s = status -s
+  	ci = commit
 
 	# Show the diff between the latest commit and the current state
 	d = !"git diff-index --quiet HEAD -- || clear; git --no-pager diff --patch-with-stat"
@@ -185,3 +187,10 @@
 [url "git://gist.github.com/"]
 
 	insteadOf = "gist:"
+
+[gitsh]
+  defaultCommand = !clear && --no-pager l && status
+
+[user]
+	name = Ignacio Morales
+	email = ignacioEnrique.moralesMaldonado@gartner.com
