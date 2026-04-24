@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Opencode runtime/build artifacts
+home/.config/opencode/.vscode/
+home/.config/opencode/node_modules/
+home/.config/opencode/bun.lock
+home/.config/opencode/package.json
+home/.config/opencode/*.bak
+home/.config/opencode/*.bak.*
+
+# tmux plugins (tpm clones them; tmux.conf bootstraps tpm itself)
+home/.config/tmux/plugins/
+
+# Neovim undo history (local state)
+home/.config/nvim/undo/

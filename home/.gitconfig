@@ -1,0 +1,11 @@
+# This is Git's per-user configuration file.
+[user]
+# Please adapt and uncomment the following lines:
+	name = Ignacio Morales
+	email = ignacio.morales@gartner.com
+[push]
+	autoSetupRemote = true
+[http]
+	sslCAInfo = /Users/imorales/ca_certs/gartner_ca_bundle_20210429.pem
+[safe]
+	directory = /Users/imorales/Developer/cx-martech

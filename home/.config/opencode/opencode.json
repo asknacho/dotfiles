@@ -1,0 +1,73 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "litellm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "LiteLLM",
+      "options": {
+        "baseURL": "https://llmproxy.g2.com/v1"
+      },
+      "models": {
+        "claude-opus-4-7": { "name": "claude-opus-4-7", "id": "claude-opus-4-7" },
+        "claude-opus-4-6": { "name": "claude-opus-4-6", "id": "claude-opus-4-6" },
+        "claude-sonnet-4-6": { "name": "claude-sonnet-4-6", "id": "claude-sonnet-4-6" },
+        "claude-haiku-4-5": { "name": "claude-haiku-4-5", "id": "claude-haiku-4-5" },
+        "gpt-5.2": { "name": "gpt-5.2", "id": "gpt-5.2" },
+        "gpt-5.3-codex": { "name": "gpt-5.3-codex", "id": "gpt-5.3-codex" },
+        "gemini-2.5-flash": { "name": "gemini-2.5-flash", "id": "gemini-2.5-flash" },
+        "gemini-2.5-pro": { "name": "gemini-2.5-pro", "id": "gemini-2.5-pro" }
+      }
+    }
+  },
+  "plugin": [
+    "oh-my-openagent@latest",
+    "superpowers@git+https://github.com/obra/superpowers.git"
+  ],
+  "mcp": {
+    "memory": {
+      "type": "local",
+      "command": [
+        "env",
+        "MEMORY_FILE_PATH=/Users/imorales/Manager/g2-opencode-teams/memory/memory.jsonl",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "enabled": true
+    },
+    "mcp-atlassian": {
+      "type": "local",
+      "command": [
+        "env",
+        "JIRA_URL=https://gartner.atlassian.net",
+        "JIRA_USERNAME=ignacio.morales@gartner.com",
+        "JIRA_API_TOKEN={env:JIRA_API_TOKEN}",
+        "uvx",
+        "mcp-atlassian"
+      ],
+      "enabled": true
+    },
+    "github": {
+      "type": "local",
+      "command": [
+        "env",
+        "GITHUB_PERSONAL_ACCESS_TOKEN={env:GITHUB_TOKEN}",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "enabled": true
+    },
+    "conversion-uploaders": {
+      "type": "remote",
+      "url": "https://martech-convups.dmcxqa.aws.gartner.com/mcp",
+      "headers": {
+        "Authorization": "Bearer mcp-qa-f7a2d9e1b3c84f6091d5e8a7b2c4f603"
+      }
+    },
+    "datadog": {
+      "type": "remote",
+      "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core"
+    }
+  }
+}

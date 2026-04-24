@@ -1,0 +1,340 @@
+#!/usr/bin/env bash
+#%
+#% mux — lightweight tmux session manager
+#%
+#% usage: mux [command] [options]
+#%
+#% Commands:
+#%   mux                   fzf picker (sessions + configs + workspace dirs)
+#%   mux <name>            open or attach to named session
+#%   mux -l, --list        list running sessions, configs, and all workspace dirs
+#%   mux -k, --kill <name> kill a session
+#%   mux -h, --help        show this help
+#%
+#% (For listing opencode TUIs: use `oc tuis`.)
+#%
+#% Resolution order for `mux <name>`:
+#%   1. Running session with that name     → attach
+#%   2. Config ~/.config/mux/<name>.sh     → create from config, attach
+#%   3. First match in WORKSPACE_DIRS:
+#%      a. Git worktree with parent config → inherit parent config, attach
+#%      b. Otherwise                       → default layout, attach
+#%   4. None of the above                  → bare session in cwd
+#%
+#% Worktree inheritance:
+#%   If a directory is a git worktree and its parent repo has a mux config,
+#%   the parent config is reused with MUX_ROOT set to the worktree path.
+#%   Configs should use: ROOT="${MUX_ROOT:-$HOME/Developer/myproject}"
+#%
+#% Config files:
+#%   Plain bash scripts in ~/.config/mux/<name>.sh
+#%   They receive SESSION_NAME as an env var and have access to:
+#%
+#%     mux_new_session <root>             create session → window index
+#%     mux_new_window <root> [name]       add a window → window index
+#%     mux_split_editor <win> <root>      split window: vim (75%) | terminal / terminal
+#%     mux_split_tiled <win> <root>       split window: 2x2 tiled panes
+#%     mux_opencode <pane> <root>         launch opencode TUI attached to shared server
+#%     mux_focus_window <win>             select a window by index
+#%
+#% Default workspace layout (dirs without a config):
+#%   ┌───────────────────┬──────────┐
+#%   │                   │ opencode │
+#%   │       vim (75%)   ├──────────┤
+#%   │                   │ terminal │
+#%   └───────────────────┴──────────┘
+#%
+#% Environment:
+#%   MUX_CONFIG_DIR    config directory   (default: ~/.config/mux)
+#%   WORKSPACE_DIRS    colon-separated workspace roots
+#%                     (default: ~/Developer:~/Developer/spikes)
+#%
+#% Requires: bash 4.2+, tmux with base-index/pane-base-index 1
+#%
+
+set -euo pipefail
+
+MUX_CONFIG_DIR="${MUX_CONFIG_DIR:-$HOME/.config/mux}"
+WORKSPACE_DIRS="${WORKSPACE_DIRS:-$HOME/Developer:$HOME/Developer/spikes}"
+
+# shellcheck source=/dev/null
+. "$(dirname "$(readlink -f "$0")")/_opencode_common.sh"
+
+# ── helpers ──────────────────────────────────────────────────────────────────
+
+die()    { echo "mux: $*" >&2; exit 1; }
+_usage() { sed -n '/^#%/ { s/^#% \{0,1\}//; p; }' "$0"; exit 0; }
+
+session_exists() { [[ -n "${_MUX_SESSIONS["$1"]+x}" ]]; }
+
+_load_sessions() {
+  declare -gA _MUX_SESSIONS=()
+  while IFS= read -r s; do
+    [[ -n "$s" ]] && _MUX_SESSIONS["$s"]=1
+  done < <(tmux ls -F '#{session_name}' 2>/dev/null || true)
+}
+
+_sanitize_name() { echo "${1//[.:]/_}"; }
+
+_workspace_dirs() {
+  local IFS=':'
+  read -ra _dirs <<< "$WORKSPACE_DIRS"
+  printf '%s\n' "${_dirs[@]}"
+}
+
+_worktree_parent() {
+  local dir="$1"
+  local gitfile="$dir/.git"
+  [[ -f "$gitfile" ]] || return 1
+
+  local gitdir
+  gitdir="$(sed -n 's/^gitdir: //p' "$gitfile")"
+  [[ -n "$gitdir" ]] || return 1
+  [[ "$gitdir" = /* ]] || gitdir="$dir/$gitdir"
+
+  local parent_git="${gitdir%/worktrees/*}"
+  [[ "$parent_git" != "$gitdir" ]] || return 1
+
+  local parent_repo="${parent_git%/.git}"
+  echo "${parent_repo##*/}"
+}
+
+attach() {
+  local name="$1"
+  if [ -n "${TMUX:-}" ]; then
+    tmux switch-client -t "$name"
+  else
+    tmux attach-session -t "$name"
+  fi
+}
+
+# ── layout primitives (available to config scripts via export -f) ────────────
+
+mux_new_session() {
+  local root="$1"
+  tmux new-session -d -s "$SESSION_NAME" -c "$root" -P -F '#{window_index}'
+}
+
+mux_new_window() {
+  local root="$1"
+  local name="${2:-}"
+  tmux new-window -t "$SESSION_NAME" ${name:+-n "$name"} -c "$root" -P -F '#{window_index}'
+}
+
+#  ┌───────────────────┬──────────┐
+#  │                   │ terminal │
+#  │     vim (75%)     ├──────────┤
+#  │                   │ terminal │
+#  └───────────────────┴──────────┘
+mux_split_editor() {
+  local win="$1" root="$2"
+  local t="${SESSION_NAME}:${win}"
+  tmux split-window -h -l 25% -t "$t" -c "$root"
+  tmux split-window -v -t "${t}.2" -c "$root"
+  tmux send-keys -t "${t}.1" "cd ${root} && nvim" Enter
+  tmux select-pane -t "${t}.1"
+}
+
+#  ┌──────────┬──────────┐
+#  │  shell   │  shell   │
+#  ├──────────┼──────────┤
+#  │  shell   │  shell   │
+#  └──────────┴──────────┘
+mux_split_tiled() {
+  local win="$1" root="$2"
+  local t="${SESSION_NAME}:${win}"
+  tmux split-window -h -t "$t" -c "$root"
+  tmux split-window -v -t "${t}.1" -c "$root"
+  tmux split-window -v -t "${t}.3" -c "$root"
+  tmux select-layout -t "$t" tiled
+  tmux select-pane -t "${t}.1"
+}
+
+mux_focus_window() { tmux select-window -t "${SESSION_NAME}:${1}"; }
+
+mux_opencode() {
+  local pane="$1" dir="$2"
+  local sid
+  if sid=$(_opencode_create_session "$dir"); then
+    tmux send-keys -t "$pane" \
+      "$OPENCODE_REAL attach $OPENCODE_BASE --session $sid --dir $dir" Enter
+  else
+    echo "mux_opencode: session create failed on $OPENCODE_BASE; using integrated mode" >&2
+    tmux send-keys -t "$pane" "$OPENCODE_REAL $dir" Enter
+  fi
+}
+
+# ── default workspace layout ─────────────────────────────────────────────────
+#  ┌─────────────┬────────────┐
+#  │             │  opencode  │
+#  │    vim      ├────────────┤
+#  │             │  terminal  │
+#  └─────────────┴────────────┘
+
+default_workspace_layout() {
+  local name="$1"
+  local root="$2"
+  local w
+
+  SESSION_NAME="$name"
+  w="$(mux_new_session "$root")"
+  mux_split_editor "$w" "$root"
+  mux_opencode "${name}:${w}.2" "$root"
+}
+
+run_config() {
+  local name="$1"
+  local config_name="${2:-$name}"
+  local root_override="${3:-}"
+  local config_file="$MUX_CONFIG_DIR/${config_name}.sh"
+  export -f mux_new_session mux_new_window mux_split_editor mux_split_tiled \
+            mux_focus_window mux_opencode _opencode_create_session _opencode_server_healthy
+  export OPENCODE_BASE OPENCODE_REAL
+  if ! SESSION_NAME="$name" MUX_ROOT="$root_override" bash -e "$config_file"; then
+    tmux kill-session -t "$name" 2>/dev/null || true
+    die "config '${config_file##*/}' failed — session cleaned up"
+  fi
+}
+
+# ── list ──────────────────────────────────────────────────────────────────────
+
+cmd_list() {
+  echo "=== running sessions ==="
+  tmux ls -F '#{session_name}' 2>/dev/null || echo "(none)"
+  echo ""
+  echo "=== defined configs ==="
+  if [ -d "$MUX_CONFIG_DIR" ]; then
+    for f in "$MUX_CONFIG_DIR"/*.sh; do
+      [ -e "$f" ] || continue
+      local name="${f%.sh}"; name="${name##*/}"
+      echo "  $name"
+    done
+  else
+    echo "(no config dir at $MUX_CONFIG_DIR)"
+  fi
+
+  while IFS= read -r wdir; do
+    [[ -d "$wdir" ]] || continue
+    local label="${wdir##*/}"
+    echo ""
+    echo "=== ${label} ==="
+    for d in "$wdir"/*/; do
+      [ -d "$d" ] || continue
+      local dname="${d%/}"; dname="${dname##*/}"
+      echo "  $dname"
+    done
+  done < <(_workspace_dirs)
+}
+
+# ── kill ──────────────────────────────────────────────────────────────────────
+
+cmd_kill() {
+  local name="${1:-}"
+  [ -z "$name" ] && die "usage: mux -k <session-name>"
+  tmux kill-session -t "$name" && echo "mux: killed session '$name'"
+}
+
+# ── open (main logic) ─────────────────────────────────────────────────────────
+
+cmd_open() {
+  local raw_name="${1:-}"
+  local name
+  name="$(_sanitize_name "$raw_name")"
+
+  [[ -v _MUX_SESSIONS ]] || _load_sessions
+
+  if session_exists "$name"; then
+    attach "$name"
+    return
+  fi
+
+  _ensure_opencode_server || true
+
+  local config_file="$MUX_CONFIG_DIR/${raw_name}.sh"
+  if [ -f "$config_file" ]; then
+    run_config "$name"
+    attach "$name"
+    return
+  fi
+
+  while IFS= read -r wdir; do
+    local wpath="$wdir/$raw_name"
+    if [ -d "$wpath" ]; then
+      local parent
+      if parent="$(_worktree_parent "$wpath")" \
+         && [ -f "$MUX_CONFIG_DIR/${parent}.sh" ]; then
+        run_config "$name" "$parent" "$wpath"
+      else
+        default_workspace_layout "$name" "$wpath"
+      fi
+      attach "$name"
+      return
+    fi
+  done < <(_workspace_dirs)
+
+  echo "mux: no config or directory found for '$raw_name', creating bare session"
+  tmux new-session -d -s "$name" -c "$PWD"
+  attach "$name"
+}
+
+# ── fzf picker ────────────────────────────────────────────────────────────────
+
+cmd_pick() {
+  _load_sessions
+  local choices=()
+
+  for s in "${!_MUX_SESSIONS[@]}"; do
+    choices+=("session: $s")
+  done
+
+  if [ -d "$MUX_CONFIG_DIR" ]; then
+    for f in "$MUX_CONFIG_DIR"/*.sh; do
+      [ -e "$f" ] || continue
+      local cname="${f%.sh}"
+      cname="${cname##*/}"
+      session_exists "$cname" || choices+=("config:  $cname")
+    done
+  fi
+
+  while IFS= read -r wdir; do
+    [[ -d "$wdir" ]] || continue
+    local label="${wdir##*/}"
+    for d in "$wdir"/*/; do
+      [ -d "$d" ] || continue
+      local dname="${d%/}"
+      dname="${dname##*/}"
+      local sanitized
+      sanitized="$(_sanitize_name "$dname")"
+      if ! session_exists "$sanitized" && [ ! -f "$MUX_CONFIG_DIR/${dname}.sh" ]; then
+        choices+=("${label}: $dname")
+      fi
+    done
+  done < <(_workspace_dirs)
+
+  [ ${#choices[@]} -eq 0 ] && die "nothing to open"
+
+  local chosen
+  if command -v fzf >/dev/null 2>&1; then
+    chosen="$(printf '%s\n' "${choices[@]}" | fzf --prompt='mux> ' --height=40%)"
+  else
+    printf '%s\n' "${choices[@]}"
+    printf 'pick: '
+    read -r chosen
+  fi
+
+  [ -z "$chosen" ] && exit 0
+
+  local picked_name="${chosen#*: }"
+  picked_name="${picked_name# }"
+  cmd_open "$picked_name"
+}
+
+# ── entry point ───────────────────────────────────────────────────────────────
+
+case "${1:-}" in
+  -l|--list)  cmd_list ;;
+  -k|--kill)  cmd_kill "${2:-}" ;;
+  -h|--help)  _usage ;;
+  "")         cmd_pick ;;
+  *)          cmd_open "$1" ;;
+esac
