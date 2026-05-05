@@ -152,5 +152,4 @@ The configs that live in this public repo:
 
 - `dotfiles.sh` — vim + opencode at `~/.homesick/repos`
 - `workspace.sh` — vim + opencode at `~/Developer`
-- `config.sh` — vim + opencode at `~/.config`
 - `showoff.sh` — fun synchronized-panes layout running `genact`
