@@ -24,29 +24,6 @@
     "superpowers@git+https://github.com/obra/superpowers.git"
   ],
   "mcp": {
-    "memory": {
-      "type": "local",
-      "command": [
-        "env",
-        "MEMORY_FILE_PATH=/Users/imorales/Manager/g2-opencode-teams/memory/memory.jsonl",
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-memory"
-      ],
-      "enabled": true
-    },
-    "mcp-atlassian": {
-      "type": "local",
-      "command": [
-        "env",
-        "JIRA_URL=https://gartner.atlassian.net",
-        "JIRA_USERNAME=ignacio.morales@gartner.com",
-        "JIRA_API_TOKEN={env:JIRA_API_TOKEN}",
-        "uvx",
-        "mcp-atlassian"
-      ],
-      "enabled": true
-    },
     "github": {
       "type": "local",
       "command": [
@@ -58,16 +35,19 @@
       ],
       "enabled": true
     },
-    "conversion-uploaders": {
-      "type": "remote",
-      "url": "https://martech-convups.dmcxqa.aws.gartner.com/mcp",
-      "headers": {
-        "Authorization": "Bearer mcp-qa-f7a2d9e1b3c84f6091d5e8a7b2c4f603"
-      }
-    },
     "datadog": {
       "type": "remote",
       "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core"
+    },
+    "playwright": {
+      "type": "local",
+      "command": [
+        "env",
+        "PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        "npx",
+        "@playwright/mcp@latest"
+      ],
+      "enabled": true
     }
   }
 }

@@ -52,4 +52,4 @@ fi
 
 # ── open with mux (default workspace layout) ────────────────────────────────
 
-exec mux "$slug"
+exec mux "$dirname"

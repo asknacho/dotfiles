@@ -1,23 +1,24 @@
 {
   "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json",
   "agents": {
-    "sisyphus": { "model": "litellm/claude-sonnet-4-6", "variant": "max" },
-    "oracle": { "model": "litellm/gpt-5.4", "variant": "high" },
-    "librarian": { "model": "litellm/claude-sonnet-4-6" },
+    "sisyphus": { "model": "litellm/claude-opus-4-7", "variant": "xhigh" },
+    "oracle": { "model": "litellm/gpt-5.5-pro", "variant": "high" },
+    "librarian": { "model": "litellm/claude-haiku-4-5" },
     "explore": { "model": "litellm/claude-haiku-4-5" },
     "multimodal-looker": { "model": "litellm/gemini-2.5-flash" },
-    "prometheus": { "model": "litellm/claude-opus-4-7", "variant": "max" },
-    "metis": { "model": "litellm/claude-opus-4-7", "variant": "max" },
-    "momus": { "model": "litellm/gpt-5.4", "variant": "medium" },
+    "prometheus": { "model": "litellm/claude-opus-4-7", "variant": "xhigh" },
+    "metis": { "model": "litellm/claude-opus-4-7", "variant": "xhigh" },
+    "momus": { "model": "litellm/gpt-5.5-pro", "variant": "medium" },
     "atlas": { "model": "litellm/claude-sonnet-4-6" }
   },
   "categories": {
     "visual-engineering": { "model": "litellm/gemini-2.5-pro", "variant": "max" },
-    "ultrabrain": { "model": "litellm/gpt-5.4", "variant": "xhigh" },
+    "ultrabrain": { "model": "litellm/gpt-5.5-pro", "variant": "xhigh" },
     "artistry": { "model": "litellm/gemini-2.5-pro", "variant": "max" },
+    "deep": { "model": "litellm/gpt-5.3-codex", "variant": "high" },
     "quick": { "model": "litellm/claude-haiku-4-5" },
     "unspecified-low": { "model": "litellm/claude-sonnet-4-6" },
-    "unspecified-high": { "model": "litellm/claude-sonnet-4-6", "variant": "max" },
+    "unspecified-high": { "model": "litellm/claude-opus-4-7", "variant": "xhigh" },
     "writing": { "model": "litellm/gemini-2.5-flash" }
   },
   "_migrations": []

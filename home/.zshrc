@@ -143,19 +143,10 @@ git_main_branch() {
 }
 
 # ===========================================================
-# Environment
-# ===========================================================
-export EJSON_KEYDIR=~/.ejson/keys
-export NODE_EXTRA_CA_CERTS="/Users/imorales/ca_certs/gartner_ca_bundle_20210429.pem"
-
-# ===========================================================
 # PATH
 # ===========================================================
-export QLTY_INSTALL="$HOME/.qlty"
-export PATH="$QLTY_INSTALL/bin:$PATH"
 export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
-export PATH="/Users/imorales/.opencode/bin:$PATH"
-export PATH="/Users/imorales/.antigravity/antigravity/bin:$PATH"
+export PATH="$HOME/.opencode/bin:$PATH"
 
 # ===========================================================
 # Tool hooks

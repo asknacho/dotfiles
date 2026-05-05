@@ -66,12 +66,16 @@ return {
             },
           },
         },
-        expert = {
-          cmd = { "/Users/jperi/.local/bin/expert" },
-          filetypes = { "elixir", "eelixir", "heex" },
-          root_dir = require('lspconfig').util.root_pattern("mix.exs", ".git"),
-        },
       }
+
+      local expert_bin = vim.fn.exepath('expert')
+      if expert_bin ~= '' then
+        servers.expert = {
+          cmd = { expert_bin },
+          filetypes = { 'elixir', 'eelixir', 'heex' },
+          root_dir = require('lspconfig').util.root_pattern('mix.exs', '.git'),
+        }
+      end
 
       require('mason').setup()
 

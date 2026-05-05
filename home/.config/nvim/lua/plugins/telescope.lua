@@ -54,6 +54,13 @@ return {
             },
           },
         },
+        pickers = {
+          find_files = {
+            hidden = true,
+            no_ignore = true,
+            file_ignore_patterns = { "^.git/", "/.git/", "node_modules/", ".DS_Store" },
+          },
+        },
         extensions = {
           ['ui-select'] = themes.get_dropdown(),
           live_grep_args = {

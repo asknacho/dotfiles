@@ -45,7 +45,9 @@
 #%   └───────────────────┴──────────┘
 #%
 #% Environment:
-#%   MUX_CONFIG_DIR    config directory   (default: ~/.config/mux)
+#%   MUX_CONFIG_DIRS   colon-separated config directories, searched in order
+#%                     (default: ~/.config/mux:~/.config/mux.local)
+#%   MUX_CONFIG_DIR    legacy single dir; if set, used as the first entry
 #%   WORKSPACE_DIRS    colon-separated workspace roots
 #%                     (default: ~/Developer:~/Developer/spikes)
 #%
@@ -54,7 +56,15 @@
 
 set -euo pipefail
 
-MUX_CONFIG_DIR="${MUX_CONFIG_DIR:-$HOME/.config/mux}"
+if ! { [ -t 0 ] || [ -t 1 ]; }; then
+  echo "mux: no TTY attached — refusing to run. Launch from an interactive terminal." >&2
+  exit 1
+fi
+
+if [[ -n "${MUX_CONFIG_DIR:-}" && -z "${MUX_CONFIG_DIRS:-}" ]]; then
+  MUX_CONFIG_DIRS="$MUX_CONFIG_DIR"
+fi
+MUX_CONFIG_DIRS="${MUX_CONFIG_DIRS:-$HOME/.config/mux:$HOME/.config/mux.local}"
 WORKSPACE_DIRS="${WORKSPACE_DIRS:-$HOME/Developer:$HOME/Developer/spikes}"
 
 # shellcheck source=/dev/null
@@ -80,6 +90,23 @@ _workspace_dirs() {
   local IFS=':'
   read -ra _dirs <<< "$WORKSPACE_DIRS"
   printf '%s\n' "${_dirs[@]}"
+}
+
+_config_dirs() {
+  local IFS=':'
+  read -ra _dirs <<< "$MUX_CONFIG_DIRS"
+  printf '%s\n' "${_dirs[@]}"
+}
+
+# Look up a config by base name across all MUX_CONFIG_DIRS.
+# Prints the first matching file path, or returns 1.
+_find_config() {
+  local name="$1"
+  local d
+  while IFS= read -r d; do
+    [[ -f "$d/${name}.sh" ]] && { echo "$d/${name}.sh"; return 0; }
+  done < <(_config_dirs)
+  return 1
 }
 
 _worktree_parent() {
@@ -186,7 +213,10 @@ run_config() {
   local name="$1"
   local config_name="${2:-$name}"
   local root_override="${3:-}"
-  local config_file="$MUX_CONFIG_DIR/${config_name}.sh"
+  local config_file
+  if ! config_file="$(_find_config "$config_name")"; then
+    die "config '${config_name}.sh' not found in any MUX_CONFIG_DIRS"
+  fi
   export -f mux_new_session mux_new_window mux_split_editor mux_split_tiled \
             mux_focus_window mux_opencode _opencode_create_session _opencode_server_healthy
   export OPENCODE_BASE OPENCODE_REAL
@@ -203,15 +233,18 @@ cmd_list() {
   tmux ls -F '#{session_name}' 2>/dev/null || echo "(none)"
   echo ""
   echo "=== defined configs ==="
-  if [ -d "$MUX_CONFIG_DIR" ]; then
-    for f in "$MUX_CONFIG_DIR"/*.sh; do
+  local any_dir=0
+  while IFS= read -r dir; do
+    [ -d "$dir" ] || continue
+    any_dir=1
+    echo "  [$dir]"
+    for f in "$dir"/*.sh; do
       [ -e "$f" ] || continue
       local name="${f%.sh}"; name="${name##*/}"
-      echo "  $name"
+      echo "    $name"
     done
-  else
-    echo "(no config dir at $MUX_CONFIG_DIR)"
-  fi
+  done < <(_config_dirs)
+  [ "$any_dir" -eq 0 ] && echo "(no config dirs found in $MUX_CONFIG_DIRS)"
 
   while IFS= read -r wdir; do
     [[ -d "$wdir" ]] || continue
@@ -250,9 +283,8 @@ cmd_open() {
 
   _ensure_opencode_server || true
 
-  local config_file="$MUX_CONFIG_DIR/${raw_name}.sh"
-  if [ -f "$config_file" ]; then
-    run_config "$name"
+  if _find_config "$raw_name" >/dev/null; then
+    run_config "$name" "$raw_name"
     attach "$name"
     return
   fi
@@ -262,7 +294,7 @@ cmd_open() {
     if [ -d "$wpath" ]; then
       local parent
       if parent="$(_worktree_parent "$wpath")" \
-         && [ -f "$MUX_CONFIG_DIR/${parent}.sh" ]; then
+         && _find_config "$parent" >/dev/null; then
         run_config "$name" "$parent" "$wpath"
       else
         default_workspace_layout "$name" "$wpath"
@@ -287,14 +319,18 @@ cmd_pick() {
     choices+=("session: $s")
   done
 
-  if [ -d "$MUX_CONFIG_DIR" ]; then
-    for f in "$MUX_CONFIG_DIR"/*.sh; do
+  declare -A _seen_configs=()
+  while IFS= read -r dir; do
+    [ -d "$dir" ] || continue
+    for f in "$dir"/*.sh; do
       [ -e "$f" ] || continue
       local cname="${f%.sh}"
       cname="${cname##*/}"
+      [[ -n "${_seen_configs[$cname]+x}" ]] && continue
+      _seen_configs["$cname"]=1
       session_exists "$cname" || choices+=("config:  $cname")
     done
-  fi
+  done < <(_config_dirs)
 
   while IFS= read -r wdir; do
     [[ -d "$wdir" ]] || continue
@@ -305,7 +341,7 @@ cmd_pick() {
       dname="${dname##*/}"
       local sanitized
       sanitized="$(_sanitize_name "$dname")"
-      if ! session_exists "$sanitized" && [ ! -f "$MUX_CONFIG_DIR/${dname}.sh" ]; then
+      if ! session_exists "$sanitized" && ! _find_config "$dname" >/dev/null; then
         choices+=("${label}: $dname")
       fi
     done

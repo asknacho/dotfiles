@@ -1,11 +1,21 @@
 # zsh completion for mux
 _mux() {
-  local MUX_CONFIG_DIR="${MUX_CONFIG_DIR:-$HOME/.config/mux}"
+  local config_dirs="${MUX_CONFIG_DIRS:-${MUX_CONFIG_DIR:-$HOME/.config/mux:$HOME/.config/mux.local}}"
 
   local -a sessions configs
+  local -A seen
+  local dir
 
   sessions=(${(f)"$(tmux ls -F '#{session_name}' 2>/dev/null)"})
-  [[ -d "$MUX_CONFIG_DIR" ]] && configs=(${MUX_CONFIG_DIR}/*.sh(N:t:r))
+
+  for dir in ${(s.:.)config_dirs}; do
+    [[ -d "$dir" ]] || continue
+    for f in $dir/*.sh(N:t:r); do
+      [[ -z "${seen[$f]+x}" ]] || continue
+      seen[$f]=1
+      configs+=($f)
+    done
+  done
 
   case $CURRENT in
     2)
