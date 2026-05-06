@@ -6,7 +6,8 @@
 #   OPENCODE_BASE   default: http://127.0.0.1:4096
 #                   Change this if port 4096 is taken on your machine.
 #                   Example: export OPENCODE_BASE=http://127.0.0.1:4196
-#   OPENCODE_REAL   default: ~/.opencode/bin/opencode
+#   OPENCODE_REAL   default: first existing of
+#                       ~/.opencode/bin/opencode, $(command -v opencode)
 #
 # Exposes:
 #   _opencode_server_healthy      — 0 if server responds healthy at OPENCODE_BASE
@@ -16,7 +17,13 @@
 #   _opencode_create_session DIR  — POSTs to /session?directory=DIR, prints session id
 
 : "${OPENCODE_BASE:=http://127.0.0.1:4096}"
-: "${OPENCODE_REAL:=$HOME/.opencode/bin/opencode}"
+if [[ -z "${OPENCODE_REAL:-}" ]]; then
+	if [[ -x "$HOME/.opencode/bin/opencode" ]]; then
+		OPENCODE_REAL="$HOME/.opencode/bin/opencode"
+	else
+		OPENCODE_REAL="$(command -v opencode 2>/dev/null || true)"
+	fi
+fi
 _OPENCODE_LOG=/tmp/opencode-server.log
 
 _opencode_server_pid() {
