@@ -4,7 +4,7 @@
 # │    vim      ├────────────┤
 # │             │  terminal  │
 # └─────────────┴────────────┘
-ROOT="$HOME/Developer"
+ROOT="$HOME/work"
 
 w=$(mux_new_session "$ROOT")
 mux_split_editor "$w" "$ROOT"

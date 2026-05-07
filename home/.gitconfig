@@ -2,10 +2,12 @@
 [user]
 # Please adapt and uncomment the following lines:
 	name = Ignacio Morales
-	email = ignacio.morales@gartner.com
+	email = imorales@g2.com
 [push]
 	autoSetupRemote = true
-[http]
-	sslCAInfo = /Users/imorales/ca_certs/gartner_ca_bundle_20210429.pem
-[safe]
-	directory = /Users/imorales/Developer/cx-martech
+[url "git@github.com-g2:gartner-digital-markets/"]
+  insteadOf = git@github.com:gartner-digital-markets/
+[url "git@github.com-g2:capterra/"]
+  insteadOf = git@github.com:capterra/
+[url "git@github.com-g2:g2crowd/"]
+  insteadOf = git@github.com:g2crowd/

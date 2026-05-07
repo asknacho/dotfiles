@@ -5,7 +5,7 @@
 #% usage: spike [description]
 #%
 #%   If no description is given, you are prompted for one.
-#%   Creates ~/spikes/YYYY-MM-DD_description/ and opens a mux
+#%   Creates $SPIKES_DIR/YYYY-MM-DD_description/ and opens a mux
 #%   session with the default workspace layout (vim + opencode + shell).
 #%
 #% Examples:
@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-SPIKES_DIR="${SPIKES_DIR:-$HOME/Developer/spikes}"
+SPIKES_DIR="${SPIKES_DIR:-$HOME/spikes}"
 
 die() { echo "spike: $*" >&2; exit 1; }
 

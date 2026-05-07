@@ -24,7 +24,7 @@
 #% Worktree inheritance:
 #%   If a directory is a git worktree and its parent repo has a mux config,
 #%   the parent config is reused with MUX_ROOT set to the worktree path.
-#%   Configs should use: ROOT="${MUX_ROOT:-$HOME/Developer/myproject}"
+#%   Configs should use: ROOT="${MUX_ROOT:-$HOME/work/myproject}"
 #%
 #% Config files:
 #%   Plain bash scripts in ~/.config/mux/<name>.sh
@@ -49,7 +49,7 @@
 #%                     (default: ~/.config/mux:~/.config/mux.local)
 #%   MUX_CONFIG_DIR    legacy single dir; if set, used as the first entry
 #%   WORKSPACE_DIRS    colon-separated workspace roots
-#%                     (default: ~/Developer:~/Developer/spikes)
+#%                     (default: ~/work:~/spikes)
 #%
 #% Requires: bash 4.2+, tmux with base-index/pane-base-index 1
 #%
@@ -65,7 +65,7 @@ if [[ -n "${MUX_CONFIG_DIR:-}" && -z "${MUX_CONFIG_DIRS:-}" ]]; then
   MUX_CONFIG_DIRS="$MUX_CONFIG_DIR"
 fi
 MUX_CONFIG_DIRS="${MUX_CONFIG_DIRS:-$HOME/.config/mux:$HOME/.config/mux.local}"
-WORKSPACE_DIRS="${WORKSPACE_DIRS:-$HOME/Developer:$HOME/Developer/spikes}"
+WORKSPACE_DIRS="${WORKSPACE_DIRS:-$HOME/work:$HOME/spikes}"
 
 # shellcheck source=/dev/null
 . "$(dirname "$(readlink -f "$0")")/_opencode_common.sh"
