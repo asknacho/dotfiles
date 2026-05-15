@@ -151,5 +151,5 @@ The first matching `<name>.sh` wins, so a `mux.local/` config can override a pub
 The configs that live in this public repo:
 
 - `dotfiles.sh` — vim + opencode at `~/.homesick/repos`
-- `workspace.sh` — vim + opencode at `~/Developer`
+- `workspace.sh` — vim + opencode at `~/work`
 - `showoff.sh` — fun synchronized-panes layout running `genact`

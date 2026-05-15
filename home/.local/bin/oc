@@ -395,7 +395,7 @@ def guess_dir_for_session(name):
             paths = [p for p in r.stdout.splitlines() if p.strip()]
             scored = []
             for p in paths:
-                if str(HOME / "Developer") in p:
+                if str(HOME / "work") in p:
                     scored.append((2, p))
                 elif p.startswith(str(HOME)):
                     scored.append((1, p))
@@ -406,7 +406,7 @@ def guess_dir_for_session(name):
                 return scored[0][1]
     except Exception:
         pass
-    for root in (HOME / "Developer",):
+    for root in (HOME / "work",):
         cand = root / name
         if cand.is_dir():
             return str(cand)
